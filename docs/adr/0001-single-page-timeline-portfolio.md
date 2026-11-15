@@ -20,18 +20,18 @@ Build **one page**: a reverse-chronological timeline of everything, with a filte
 
 | Part | Decision |
 |---|---|
-| **Stack** | Plain `index.html`, `styles.css`, `app.js`. No framework, no build step, no dependencies other than one Google Font (Fraunces). |
-| **Top of page** | Name, one-line role, a 1–2 sentence intro in my own voice, a "Now" line saying what I'm looking for, email / LinkedIn / GitHub, and a one-line toolbox of skills. |
+| **Stack** | One self-contained `index.html` with the CSS in a `<style>` block and the JavaScript in a `<script>` block at the end of `<body>`. No framework, no build step, no dependencies other than one Google Font (Fraunces). |
+| **Top of page** | Name, one-line role, a 1–2 sentence intro in my own voice, a "Now" line saying what I'm looking for, email / LinkedIn / GitHub, and a compact toolbox: skills grouped by area, one line each, still inside the hero rather than a section of their own. |
 | **Timeline** | A single column, newest first, grouped under year headings (2026, 2025, Earlier). Overlapping items, such as the project and the degree, sit in the same column and are told apart by a type label. |
 | **Entry model** | Every entry has the same shape: type, date range, title, org, an optional lede, optional bullets, and tags. The types are `work`, `project`, `education`, `award` and `certification`. |
 | **Visual weight** | 3–5 entries are marked `feature` and shown larger. The rest are compact. |
 | **Anchors** | Every year and every entry has a stable `id`, e.g. `#zamren-intern`, so it can be deep-linked. |
 | **Filtering** | Filter by type and by tag. The filter state lives in the URL (`?type=project&tag=security`) so a filtered view can be shared. The page shows a count ("3 of 8 entries") and a clear button. Clicking a tag on an entry applies that filter. A deep link to a hidden entry clears the filter so the entry is never lost. |
 | **Content location** | Entries are written directly in `index.html`. `data-type` and `data-tags` attributes drive the filters. |
-| **Progressive enhancement** | Without JavaScript the full timeline and every anchor still work. `app.js` only adds the filter bar and highlights the current year in the nav. |
+| **Progressive enhancement** | Without JavaScript the full timeline and every anchor still work. The script only adds the filter bar and highlights the current year in the nav. |
 | **Style** | Minimal and a bit personal: one pink accent (my favourite colour), Fraunces for headings, system sans for body text, automatic dark mode, and a print stylesheet that hides the nav and shows every entry. |
 | **Accessibility** | Semantic HTML (`<article>`, `<time datetime>`), a skip link, keyboard-reachable filter chips using `aria-pressed`, visible focus rings, smooth scrolling only when reduced motion isn't requested, and accent colours checked for contrast. |
-| **Hosting** | Netlify publishes the repo root with no build command. `netlify.toml` sets a strict Content-Security-Policy and standard security headers. |
+| **Hosting** | Netlify publishes the repo root with no build command. `netlify.toml` sets a strict Content-Security-Policy and standard security headers. The inline `<style>` and `<script>` are allowed by their SHA-256 hashes, not by `'unsafe-inline'`. |
 
 ### Content rules
 
@@ -73,13 +73,20 @@ These are deliberately not part of the site. Adding any of them needs a new ADR.
 ### Equal-weight cards for every entry
 **Rejected.** A flat list reads like a log file. Feature entries (the award, the degree, the helpdesk project, ZAMREN) get larger type and a filled dot.
 
+### Separate `styles.css` and `app.js` files
+**Superseded.** This was the first build. Moving to a single file means one request, a page that can be saved or emailed as one file, and nothing to keep in sync. The cost is that the CSP has to list hashes of the inline blocks instead of `'self'` (see Consequences).
+
+### `'unsafe-inline'` in the CSP
+**Rejected.** It would make inline code work without any upkeep, but it would also allow any injected inline script to run. Hashes keep the policy strict.
+
 ### GitHub Pages
 **Not chosen.** It would work just as well for a static site. Netlify was picked for drag-and-drop deploys and for setting security headers in `netlify.toml`.
 
 ## Consequences
 
-- **Adding an entry means editing HTML.** Copy an existing `<article class="entry">`, then set its `id`, `data-type` and `data-tags` and its year section. New tags and types show up in the filter bar automatically. A new *type* also needs a label in `TYPE_LABELS` in `app.js`.
+- **Adding an entry means editing HTML.** Copy an existing `<article class="entry">`, then set its `id`, `data-type` and `data-tags` and its year section. New tags and types show up in the filter bar automatically. A new *type* also needs a label in `TYPE_LABELS` in the inline script.
 - **A new year needs a new `<section class="year">` and a matching link in the nav.**
-- **The CSP means no inline scripts or styles and no third-party embeds** unless `netlify.toml` is updated as well.
+- **Any edit to the `<style>` or `<script>` block changes its hash.** After editing either one, run `python scripts/update-csp.py`, or the live site will block the CSS or JS. Editing content (the HTML outside those blocks) doesn't affect the hashes. `.gitattributes` forces LF line endings so the hash computed on Windows matches the file Netlify serves.
+- **No `style="…"` attributes, extra inline scripts or third-party embeds** unless the CSP in `netlify.toml` is updated as well.
 - **Without JavaScript, tag links (`?tag=…`) reload the unfiltered page.** That's acceptable because nothing is lost; the visitor just sees everything.
 - **The page is only as good as its copy.** The intro line, the "Now" line and the helpdesk project's date and links still need to be confirmed by me before launch.
